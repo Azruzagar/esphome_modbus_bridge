@@ -553,9 +553,8 @@ namespace esphome
     {
       if (this->de_pin_ == nullptr && this->re_pin_ == nullptr)
         return;
-      // ensure last stop bit left the wire
       if (this->char_time_us_ > 0)
-        delayMicroseconds(this->char_time_us_);
+        delayMicroseconds(this->char_time_us_ * (this->rtu_frame_len_ + 2));  // wait full frame
       this->rs485_set_tx_(false);
     }
 
