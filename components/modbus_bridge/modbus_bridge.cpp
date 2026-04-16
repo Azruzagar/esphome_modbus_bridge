@@ -553,8 +553,7 @@ namespace esphome
     {
       if (this->de_pin_ == nullptr && this->re_pin_ == nullptr)
         return;
-      if (this->char_time_us_ > 0)
-        delayMicroseconds(this->char_time_us_ * (this->rtu_frame_len_ + 2));  // wait full frame
+      delayMicroseconds(3000);   // 3ms — safely covers full 8-byte frame drain at 38400
       this->rs485_set_tx_(false);
     }
 
