@@ -554,11 +554,9 @@ namespace esphome
       if (this->de_pin_ == nullptr && this->re_pin_ == nullptr)
         return;
       if (this->char_time_us_ > 0)
-        delayMicroseconds(this->char_time_us_);
+        delayMicroseconds(this->char_time_us_ * 2); // 2 char times = 1.15ms, ensures shift register drains
       this->rs485_set_tx_(false);
-      // Wait for full TX frame echo to arrive (8 bytes × char_time + margin)
-      delayMicroseconds(5000);   // 10ms flat — covers any frame size at 19200 baud
-      drain_uart_rx(this->uart_);
+      // NO post-drain here — let the stripper handle echo bytes in poll_uart_response_
     }
 
     // -------------------------------------------------------------------------------------------
