@@ -1444,6 +1444,34 @@ namespace esphome
 
       this->read_uart_response_bytes_(pending);
 
+      // --- Strip TX echo prefix -------------------------------------------
+      // The echo is a suffix of rtu_data prepended to the real response.
+      // Find the longest suffix of rtu_data that matches a prefix of response
+      // AND is followed by the expected UID byte.
+      if (current_size > 1 && !pending.rtu_data.empty())
+      {
+        const size_t tx_len = pending.rtu_data.size();
+        const uint8_t expected_uid = pending.rtu_data[0];
+        for (size_t echo_len = std::min(current_size - 1, tx_len); echo_len >= 1; echo_len--)
+        {
+          if (memcmp(pending.response.data(),
+                    pending.rtu_data.data() + tx_len - echo_len,
+                    echo_len) == 0 &&
+              pending.response[echo_len] == expected_uid)
+          {
+            pending.response.erase(pending.response.begin(),
+                                  pending.response.begin() + echo_len);
+            current_size = pending.response.size();
+            pending.last_size = current_size;
+            pending.stable_polls = 0; // reset stability after modifying buffer
+            if (this->debug_)
+              ESP_LOGD(TAG, "Stripped %u echo bytes from RTU response", (unsigned)echo_len);
+            break;
+          }
+        }
+      }
+      // --- End echo strip -------------------------------------------------
+
       size_t current_size = pending.response.size();
 
       if (current_size == 0)
