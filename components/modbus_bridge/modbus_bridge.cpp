@@ -556,8 +556,9 @@ namespace esphome
       if (this->char_time_us_ > 0)
         delayMicroseconds(this->char_time_us_);
       this->rs485_set_tx_(false);
-      // Wait for full TX frame echo to arrive (8 bytes × char_time + margin)
-      delayMicroseconds(25000);   // 10ms flat — covers any frame size at 19200 baud
+      // Drain echo bytes that arrived during TX
+      if (this->char_time_us_ > 0)
+        delayMicroseconds(this->char_time_us_ * 3);
       drain_uart_rx(this->uart_);
     }
 
