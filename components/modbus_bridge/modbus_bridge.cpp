@@ -558,7 +558,7 @@ namespace esphome
       this->rs485_set_tx_(false);
       // Drain echo bytes that arrived during TX
       if (this->char_time_us_ > 0)
-        delayMicroseconds(this->char_time_us_ * 3);
+        delayMicroseconds(this->char_time_us_ * 2);
       drain_uart_rx(this->uart_);
     }
 
