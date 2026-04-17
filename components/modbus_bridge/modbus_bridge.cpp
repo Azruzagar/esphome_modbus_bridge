@@ -1444,6 +1444,22 @@ namespace esphome
 
       this->read_uart_response_bytes_(pending);
 
+      size_t current_size = pending.response.size();
+
+      if (current_size == 0)
+      {
+        uint32_t dt = millis() - pending.start_time;
+        if (dt > this->rtu_response_timeout_ms_)
+        {
+          g_timeouts++;
+          ESP_LOGW(TAG, "Modbus timeout: no response received (no first byte) client_id=%d", pending.client_fd);
+          this->fire_rtu_timeout_for_request_(pending);
+          this->finish_current_and_send_next_();
+          return;
+        }
+        return; // still within overall timeout
+      }
+
       // --- Strip TX echo prefix -------------------------------------------
       // The echo is a suffix of rtu_data prepended to the real response.
       // Find the longest suffix of rtu_data that matches a prefix of response
@@ -1471,23 +1487,7 @@ namespace esphome
         }
       }
       // --- End echo strip -------------------------------------------------
-
-      size_t current_size = pending.response.size();
-
-      if (current_size == 0)
-      {
-        uint32_t dt = millis() - pending.start_time;
-        if (dt > this->rtu_response_timeout_ms_)
-        {
-          g_timeouts++;
-          ESP_LOGW(TAG, "Modbus timeout: no response received (no first byte) client_id=%d", pending.client_fd);
-          this->fire_rtu_timeout_for_request_(pending);
-          this->finish_current_and_send_next_();
-          return;
-        }
-        return; // still within overall timeout
-      }
-
+      
       // --- End-of-frame detection by size stability over consecutive polls ---
       // Consider the RTU response complete once we have observed no growth in
       // `pending.response.size()` for two consecutive polling intervals.
