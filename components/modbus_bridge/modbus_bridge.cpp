@@ -1516,6 +1516,21 @@ namespace esphome
           this->rtu_receive_cb_.call((int)fc, (int)addr);
         }
         std::vector<uint8_t> tcp_response;
+        
+        // Validate CRC before forwarding
+        if (current_size >= 3) {
+          uint16_t calculated = modbus_crc(pending.response.data(), current_size - 2);
+          uint16_t received = (uint16_t)pending.response[current_size - 1] << 8 |
+                              pending.response[current_size - 2];
+          if (calculated != received) {
+            if (this->debug_)
+              ESP_LOGW(TAG, "CRC mismatch, dropping frame (calc=%04X recv=%04X)", 
+                      calculated, received);
+            this->finish_current_and_send_next_();
+            return;
+          }
+        }
+
         build_tcp_from_rtu(pending, pending.response, tcp_response);
         if (this->debug_)
         {
