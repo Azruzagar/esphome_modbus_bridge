@@ -1460,34 +1460,31 @@ namespace esphome
         return; // still within overall timeout
       }
 
-      // --- Strip TX echo prefix -------------------------------------------
-      // The echo is a suffix of rtu_data prepended to the real response.
-      // Find the longest suffix of rtu_data that matches a prefix of response
-      // AND is followed by the expected UID byte.
-      if (current_size > 1 && !pending.rtu_data.empty())
+      // Strip echo and bus noise: find the real response start
+      // Real response always starts with expected UID (0x01)
+      // followed by the same FC as the request
+      if (current_size > 2 && !pending.rtu_data.empty())
       {
-        const size_t tx_len = pending.rtu_data.size();
         const uint8_t expected_uid = pending.rtu_data[0];
-        for (size_t echo_len = std::min(current_size - 1, tx_len); echo_len >= 1; echo_len--)
+        const uint8_t expected_fc  = pending.rtu_data[1];
+        // Search for UID+FC pattern starting from byte 1 (byte 0 might be correct already)
+        for (size_t i = 1; i + 1 < current_size; i++)
         {
-          if (memcmp(pending.response.data(),
-                    pending.rtu_data.data() + tx_len - echo_len,
-                    echo_len) == 0 &&
-              pending.response[echo_len] == expected_uid)
+          if (pending.response[i]     == expected_uid &&
+              pending.response[i + 1] == expected_fc)
           {
             pending.response.erase(pending.response.begin(),
-                                  pending.response.begin() + echo_len);
+                                  pending.response.begin() + i);
             current_size = pending.response.size();
             pending.last_size = current_size;
-            pending.stable_polls = 0; // reset stability after modifying buffer
+            pending.stable_polls = 0;
             if (this->debug_)
-              ESP_LOGD(TAG, "Stripped %u echo bytes from RTU response", (unsigned)echo_len);
+              ESP_LOGD(TAG, "Stripped %u leading bytes (echo/noise)", (unsigned)i);
             break;
           }
         }
       }
-      // --- End echo strip -------------------------------------------------
-      
+
       // --- End-of-frame detection by size stability over consecutive polls ---
       // Consider the RTU response complete once we have observed no growth in
       // `pending.response.size()` for two consecutive polling intervals.
